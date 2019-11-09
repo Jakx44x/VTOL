@@ -1,4 +1,4 @@
-'''test for vtol.py'''
+'''test for Quadcopter.py'''
 import pytest
 from vtol import setup_vehicle
 

@@ -1,10 +1,10 @@
-'''main executable for setting up VTOL'''
+'''main executable for setting up Quadcopter'''
 import json
 from dronekit import LocationGlobalRelative
 from vtol import setup_vehicle
 
 def main(configs):
-    '''Configure vtol and ready for mission'''
+    '''Configure Quadcopter and ready for mission'''
     vehicle = setup_vehicle(configs)
 
     vehicle.takeoff()

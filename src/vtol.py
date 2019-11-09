@@ -1,4 +1,4 @@
-'''Automous tools for VTOL'''
+'''Automous tools for Quadcopter'''
 import time
 import json
 from dronekit import connect, VehicleMode, Vehicle
@@ -26,13 +26,9 @@ def setup_vehicle(configs):
     '''Sets up self as a vehicle'''
     #Start SITL if vehicle is being simulated
     if configs["vehicle_simulated"]:
-        if configs["vehicle_type"] == "VTOL":
-            # If running a simulated VTOL on vagrant, connect to it via TCP
-            # Port 5763 must be forwarded on vagrant
-            con_str = "tcp:127.0.0.1:5763"
-        elif configs["vehicle_type"] == "Quadcopter":
-            sitl = dronekit_sitl.start_default(lat=35.328423, lon=-120.752505)
-            con_str = sitl.connection_string()
+        # If running a simulated Quadcopter on vagrant, connect to it via TCP
+        # Port 5763 must be forwarded on vagrant
+        con_str = "tcp:127.0.0.1:5763"
     else:
         if configs["3dr_solo"]:
             con_str = "udpin:0.0.0.0:14550"
@@ -42,18 +38,18 @@ def setup_vehicle(configs):
             con_str = "/dev/ttyACM0"
 
     if configs["vehicle_simulated"]:
-        veh = connect(con_str, wait_ready=True, vehicle_class=VTOL)
+        veh = connect(con_str, wait_ready=True, vehicle_class=Quadcopter)
     else:
-        veh = connect(con_str, baud=configs["baud_rate"], wait_ready=True, vehicle_class=VTOL)
+        veh = connect(con_str, baud=configs["baud_rate"], wait_ready=True, vehicle_class=Quadcopter)
     veh.configs = configs
     veh.setup_coms()
     return veh
 
 
-class VTOL(Vehicle):
-    ''' VTOL basic state isolated'''
+class Quadcopter(Vehicle):
+    ''' Quadcopter basic state isolated'''
     def __init__(self, *args): #pylint: disable=useless-super-delegation
-        super(VTOL, self).__init__(*args)
+        super(Quadcopter, self).__init__(*args)
 
     # State, updated by XBee callback function
     configs = None
@@ -97,14 +93,14 @@ class VTOL(Vehicle):
         self.commands.next = 0
         self.mode = VehicleMode("AUTO")
 
-        if self.configs["vehicle_type"] == "Quadcopter":
-            msg = self.message_factory.command_long_encode(
-                0, 0,    # target_system, target_component
-                mavutil.mavlink.MAV_CMD_MISSION_START, #command
-                0, #confirmation
-                0, 0, 0, 0, 0, 0, 0)    # param 1 ~ 7 not used
-            # send command to vehicle
-            self.send_mavlink(msg)
+        # if self.configs["vehicle_type"] == "Quadcopter":
+        #     msg = self.message_factory.command_long_encode(
+        #         0, 0,    # target_system, target_component
+        #         mavutil.mavlink.MAV_CMD_MISSION_START, #command
+        #         0, #confirmation
+        #         0, 0, 0, 0, 0, 0, 0)    # param 1 ~ 7 not used
+        #     # send command to vehicle
+        #     self.send_mavlink(msg)
 
         self.commands.next = 0
 
@@ -126,7 +122,6 @@ class VTOL(Vehicle):
             time.sleep(1)
 
         print("Taking off")
-
         altitude = self.configs['initialAltitude']
         self.simple_takeoff(altitude)  # take off to altitude
 
@@ -137,31 +132,19 @@ class VTOL(Vehicle):
 
         print("Reached target altitude")
 
-    def go_to(self, point):
-        ''' Commands drone to fly to a specified point perform a simple_goto '''
-        destination = point
-
-        self.simple_goto(destination, self.configs["air_speed"])
-
-        while get_distance_metres(self.location.global_relative_frame, destination) > 1:
-            print("Distance remaining:", get_distance_metres(self.location.global_relative_frame, destination))
-            time.sleep(1)
-        print("Target reached")
 
     def land(self):
         '''Commands vehicle to land'''
-        self.mode = VehicleMode("LAND")
+        print("Returning to launch")
+        if self.configs["vehicle_type"] == "Quadcopter":
+            self.mode = VehicleMode("RTL")
 
-        print("Landing...")
-
-        while self.location.global_relative_frame.alt > 0:
+        # Wait until vehicle reaches ground
+        while not self.location.global_relative_frame.alt < 1.0:
             print("Altitude: " + str(self.location.global_relative_frame.alt))
             time.sleep(1)
-
-        print("Landed")
-
-        print("Sleeping...")
-        time.sleep(5)
+        time.sleep(10)
+        self.close()
 
 
     def change_status(self, new_status):
@@ -169,7 +152,7 @@ class VTOL(Vehicle):
         if new_status not in ("ready", "running", "waiting", "paused", "error"):
             raise Exception("Error: Unsupported status for vehicle")
         self.status = new_status
-
+.
     def include_heading(self):
         '''Includes heading in messages'''
         self.heading = True
@@ -191,7 +174,7 @@ class VTOL(Vehicle):
                 "tid": 0, # the ID of the GCS is 0
                 "id": self.coms.new_msg_id(),
 
-                "vehicleType": "VTOL",
+                "vehicleType": "Quadcopter",
                 "lat": location.lat,
                 "lon": location.lon,
                 "status": self.status,
@@ -205,4 +188,3 @@ class VTOL(Vehicle):
             self.coms.send_till_ack(address, update_message, update_message['id'])
             time.sleep(1)
         self.change_status("ready")
-        

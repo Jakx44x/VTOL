@@ -1,4 +1,4 @@
-'''Util methods for VTOL'''
+'''Util methods for Quadcopter'''
 import json
 import datetime
 import subprocess

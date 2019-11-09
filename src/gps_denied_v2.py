@@ -14,7 +14,7 @@ from simple_pid import PID
 from shapely.geometry import Polygon, Point
 from dronekit import connect, VehicleMode
 from dotenv import load_dotenv
-from vtol import VTOL
+from vtol import Quadcopter
 
 load_dotenv()
 
@@ -27,7 +27,7 @@ def setup_vehicle(configs):
     return veh
 
 
-class GpsDeniedVtol(VTOL):
+class GpsDeniedVtol(Quadcopter):
     '''encapsualtes variables and tools used for GPS denied navigation'''
 
     # Quick configs

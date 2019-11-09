@@ -1,5 +1,5 @@
 '''
-cv simulation and module for VTOL
+cv simulation and module for Quadcopter
 '''
 
 import re
@@ -21,7 +21,7 @@ class Vision():
         return sorted(data, key=alphanum_key)
 
     def cv_simulation(self, configs):
-        '''simulation for VTOL cv'''
+        '''simulation for Quadcopter cv'''
         files = self.sorted_alphanumeric(listdir(configs["cv_simulated"]["directory"]))
         path = configs["cv_simulated"]["directory"] + "/" + files[self.image_counter % len(files)]
         img = cv2.imread(path, 1)
