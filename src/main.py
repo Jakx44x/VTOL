@@ -1,7 +1,7 @@
 '''main executable for setting up Quadcopter'''
 import json
 from dronekit import LocationGlobalRelative
-from vtol import setup_vehicle
+from quadcopter import setup_vehicle
 
 def main(configs):
     '''Configure Quadcopter and ready for mission'''
@@ -9,9 +9,15 @@ def main(configs):
 
     vehicle.takeoff()
 
+    vehicle.set_altitude(3)
+
+    vehicle.set_altitude(10)
+
     home = vehicle.location.global_relative_frame
 
-    destination = LocationGlobalRelative(configs["dest"]["lat"], configs["dest"]["long"], configs["dest"]["alt"])
+    destination = LocationGlobalRelative(configs["dest"]["lat"],\
+        configs["dest"]["long"],\
+        configs["dest"]["alt"])
 
     vehicle.go_to(destination)
     # Pick-up function for ping pong balls
