@@ -1,26 +1,11 @@
 '''Automous tools for Quadcopter'''
 import time
 import json
-from dronekit import connect, VehicleMode, Vehicle
+from dronekit import connect, VehicleMode, Vehicle, LocationGlobalRelative
 from pymavlink import mavutil
 import dronekit_sitl
 from coms import Coms
 from util import get_distance_metres
-
-class Tee():
-    '''Writes to all file objects'''
-    def __init__(self, *files):
-        self.files = files
-
-    def write(self, obj):
-        '''writes files'''
-        for file in self.files:
-            file.write(obj)
-
-    def flush(self):
-        '''flushes files'''
-        for file in self.files:
-            file.flush()
 
 def setup_vehicle(configs):
     '''Sets up self as a vehicle'''
@@ -64,8 +49,27 @@ class Quadcopter(Vehicle):
     coms = None
 
     # pylint: disable=no-self-use
-    def coms_callback(self, message, _):
+    def coms_callback(self, message):
         '''callback for radio messages'''
+        parsed_message = json.loads(message.data)
+        #tuple of commands that can be executed
+        valid_commands = ("takeoff", "RTL")
+        #gives us the specific command we want the drone to executre
+        command = parsed_message['type']
+
+        print('Recieved message type:', type(parsed_message['type']))
+
+        #checking for valid command
+        if command not in valid_commands:
+            raise Exception("Error: Unsupported status for vehicle")
+
+        #executes takeoff command to drone
+        if command == 'takeoff':
+            self.takeoff()
+        #executes land command to drone
+        elif command == 'RTL':
+            self.land()
+
         # TODO respond to xbee messagge
         data = json.loads(message.data)
         print(data['type'])
@@ -75,7 +79,6 @@ class Quadcopter(Vehicle):
         # TODO set up coms and callback
         print('Initializing Coms')
         self.coms = Coms(self.configs, self.coms_callback)
-
 
     def start_auto_mission(self):
         '''Arms and starts an AUTO mission loaded onto the vehicle'''
@@ -122,7 +125,8 @@ class Quadcopter(Vehicle):
             time.sleep(1)
 
         print("Taking off")
-        altitude = self.configs['initialAltitude']
+
+        altitude = self.configs['altitude']
         self.simple_takeoff(altitude)  # take off to altitude
 
         # Wait until vehicle reaches minimum altitude
@@ -132,8 +136,19 @@ class Quadcopter(Vehicle):
 
         print("Reached target altitude")
 
+    def go_to(self, point):
+        ''' Commands drone to fly to a specified point perform a simple_goto '''
+        destination = point
 
-    def land(self):
+        self.simple_goto(destination, self.configs["air_speed"])
+
+        while get_distance_metres(self.location.global_relative_frame, destination) > 1:
+            print("Distance remaining:",\
+                get_distance_metres(self.location.global_relative_frame, destination))
+            time.sleep(1)
+        print("Target reached")
+
+    def rtl(self):
         '''Commands vehicle to land'''
         print("Returning to launch")
         if self.configs["vehicle_type"] == "Quadcopter":
@@ -146,17 +161,23 @@ class Quadcopter(Vehicle):
         time.sleep(10)
         self.close()
 
+    def set_altitude(self, alt):
+        '''Sets altitude of quadcopter using an "alt" parameter'''
+        print("Setting altitude:")
+        destination = LocationGlobalRelative(self.location.global_relative_frame.lat, \
+            self.location.global_relative_frame.lon, alt)
+        self.go_to(destination)
+        print("Altitude reached")
 
     def change_status(self, new_status):
         ''':param new_status: new vehicle status to change to (refer to GCS formatting)'''
         if new_status not in ("ready", "running", "waiting", "paused", "error"):
             raise Exception("Error: Unsupported status for vehicle")
         self.status = new_status
-.
+
     def include_heading(self):
         '''Includes heading in messages'''
         self.heading = True
-
 
     def update_thread(self, address):
         ''':param vehicle: vehicle object that represents drone
